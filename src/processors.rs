@@ -23,10 +23,18 @@ impl VolumeProcessor {
         if parts[0] != "volume" {
             bail!("Not a volume spec");
         }
-        if parts.len() != 2 {
-            bail!("volume requires level: volume:0.5");
+        let mut volume = None;
+        for param in &parts[1..] {
+            let kv: Vec<&str> = param.split('=').collect();
+            if kv.len() != 2 {
+                bail!("Invalid parameter format: {}", param);
+            }
+            match kv[0] {
+                "level" => volume = Some(kv[1].parse().map_err(|_| eyre!("Invalid volume"))?),
+                _ => bail!("Unknown parameter: {}", kv[0]),
+            }
         }
-        let volume = parts[1].parse().map_err(|_| eyre!("Invalid volume"))?;
+        let volume = volume.ok_or_else(|| eyre!("Missing required parameter: level"))?;
         Ok(Self::new(volume))
     }
 }

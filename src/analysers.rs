@@ -20,7 +20,8 @@ impl PeakAnalyser {
         if parts[0] != "peak" {
             bail!("Not a peak spec");
         }
-        if parts.len() != 1 {
+        // No parameters expected for peak
+        if parts.len() > 1 {
             bail!("peak takes no params: peak");
         }
         Ok(Self::new())

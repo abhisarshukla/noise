@@ -14,7 +14,7 @@ use noise::sources::SineWaveSource;
 #[derive(Parser)]
 #[command(author, version, about = "Generate audio with composable pipeline")]
 struct Cli {
-    /// Pipeline: comma-separated components (e.g., "sine:440,peak,volume:0.5,peak")
+    /// Pipeline: comma-separated components (e.g., "sine:freq=440,peak,volume:level=0.5")
     #[arg(long)]
     pipeline: String,
 
@@ -37,7 +37,7 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     if cli.pipeline.is_empty() {
-        eyre::bail!("Pipeline is required. Use --pipeline 'sine:440,peak,volume:0.5'");
+        eyre::bail!("Pipeline is required. Use --pipeline 'sine:freq=440,peak,volume:level=0.5'");
     }
 
     let components: Vec<&str> = cli.pipeline.split(',').map(|s| s.trim()).collect();

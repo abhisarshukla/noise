@@ -23,10 +23,18 @@ impl SineWaveSource {
         if parts[0] != "sine" {
             bail!("Not a sine spec");
         }
-        if parts.len() != 2 {
-            bail!("sine requires frequency: sine:440");
+        let mut freq = None;
+        for param in &parts[1..] {
+            let kv: Vec<&str> = param.split('=').collect();
+            if kv.len() != 2 {
+                bail!("Invalid parameter format: {}", param);
+            }
+            match kv[0] {
+                "freq" => freq = Some(kv[1].parse().map_err(|_| eyre!("Invalid frequency"))?),
+                _ => bail!("Unknown parameter: {}", kv[0]),
+            }
         }
-        let freq = parts[1].parse().map_err(|_| eyre!("Invalid frequency"))?;
+        let freq = freq.ok_or_else(|| eyre!("Missing required parameter: freq"))?;
         Ok(Self::new(freq))
     }
 }

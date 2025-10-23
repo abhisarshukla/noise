@@ -1,8 +1,10 @@
-use std::error::Error;
+use color_eyre::eyre::Result;
 
 pub trait Component {
-    fn process(&mut self, buffer: &mut Vec<f64>, duration: f64, sample_rate: f64) -> Result<(), Box<dyn Error>>;
-    fn is_source(&self) -> bool { false }
+    fn process(&mut self, buffer: &mut Vec<f64>, duration: f64, sample_rate: f64) -> Result<()>;
+    fn is_source(&self) -> bool {
+        false
+    }
 }
 
 pub trait Source {

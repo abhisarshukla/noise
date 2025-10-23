@@ -1,5 +1,13 @@
-use crate::traits::{Component, Processor};
-use std::error::Error;
+use color_eyre::Result;
+use color_eyre::eyre::{
+    bail,
+    eyre,
+};
+
+use crate::traits::{
+    Component,
+    Processor,
+};
 
 pub struct VolumeProcessor {
     pub volume: f64,
@@ -10,15 +18,15 @@ impl VolumeProcessor {
         Self { volume }
     }
 
-    pub fn from_spec(spec: &str) -> Result<Self, String> {
+    pub fn from_spec(spec: &str) -> Result<Self> {
         let parts: Vec<&str> = spec.split(':').collect();
         if parts[0] != "volume" {
-            return Err("Not a volume spec".to_string());
+            bail!("Not a volume spec");
         }
         if parts.len() != 2 {
-            return Err("volume requires level: volume:0.5".to_string());
+            bail!("volume requires level: volume:0.5");
         }
-        let volume = parts[1].parse().map_err(|_| "Invalid volume".to_string())?;
+        let volume = parts[1].parse().map_err(|_| eyre!("Invalid volume"))?;
         Ok(Self::new(volume))
     }
 }
@@ -32,9 +40,9 @@ impl Processor for VolumeProcessor {
 }
 
 impl Component for VolumeProcessor {
-    fn process(&mut self, buffer: &mut Vec<f64>, _duration: f64, _sample_rate: f64) -> Result<(), Box<dyn Error>> {
+    fn process(&mut self, buffer: &mut Vec<f64>, _duration: f64, _sample_rate: f64) -> Result<()> {
         if buffer.is_empty() {
-            return Err("Processor requires input samples".into());
+            bail!("Processor requires input samples");
         }
         Processor::process(self, buffer);
         Ok(())

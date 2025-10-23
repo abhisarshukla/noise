@@ -1,5 +1,10 @@
-use crate::traits::{Component, Analyser};
-use std::error::Error;
+use color_eyre::Result;
+use color_eyre::eyre::bail;
+
+use crate::traits::{
+    Analyser,
+    Component,
+};
 
 pub struct PeakAnalyser {
     last_peak: Option<f64>,
@@ -10,13 +15,13 @@ impl PeakAnalyser {
         Self { last_peak: None }
     }
 
-    pub fn from_spec(spec: &str) -> Result<Self, String> {
+    pub fn from_spec(spec: &str) -> Result<Self> {
         let parts: Vec<&str> = spec.split(':').collect();
         if parts[0] != "peak" {
-            return Err("Not a peak spec".to_string());
+            bail!("Not a peak spec");
         }
         if parts.len() != 1 {
-            return Err("peak takes no params: peak".to_string());
+            bail!("peak takes no params: peak");
         }
         Ok(Self::new())
     }
@@ -37,9 +42,9 @@ impl Analyser for PeakAnalyser {
 }
 
 impl Component for PeakAnalyser {
-    fn process(&mut self, buffer: &mut Vec<f64>, _duration: f64, _sample_rate: f64) -> Result<(), Box<dyn Error>> {
+    fn process(&mut self, buffer: &mut Vec<f64>, _duration: f64, _sample_rate: f64) -> Result<()> {
         if buffer.is_empty() {
-            return Err("Analyser requires input samples".into());
+            bail!("Analyser requires input samples");
         }
         self.analyze(buffer);
         Ok(())

@@ -1,5 +1,13 @@
-use crate::traits::{Component, Source};
-use std::error::Error;
+use color_eyre::Result;
+use color_eyre::eyre::{
+    bail,
+    eyre,
+};
+
+use crate::traits::{
+    Component,
+    Source,
+};
 
 pub struct SineWaveSource {
     pub frequency: f64,
@@ -10,15 +18,15 @@ impl SineWaveSource {
         Self { frequency }
     }
 
-    pub fn from_spec(spec: &str) -> Result<Self, String> {
+    pub fn from_spec(spec: &str) -> Result<Self> {
         let parts: Vec<&str> = spec.split(':').collect();
         if parts[0] != "sine" {
-            return Err("Not a sine spec".to_string());
+            bail!("Not a sine spec");
         }
         if parts.len() != 2 {
-            return Err("sine requires frequency: sine:440".to_string());
+            bail!("sine requires frequency: sine:440");
         }
-        let freq = parts[1].parse().map_err(|_| "Invalid frequency".to_string())?;
+        let freq = parts[1].parse().map_err(|_| eyre!("Invalid frequency"))?;
         Ok(Self::new(freq))
     }
 }
@@ -30,12 +38,14 @@ impl Source for SineWaveSource {
 }
 
 impl Component for SineWaveSource {
-    fn process(&mut self, buffer: &mut Vec<f64>, duration: f64, sample_rate: f64) -> Result<(), Box<dyn Error>> {
+    fn process(&mut self, buffer: &mut Vec<f64>, duration: f64, sample_rate: f64) -> Result<()> {
         *buffer = self.generate(duration, sample_rate);
         Ok(())
     }
 
-    fn is_source(&self) -> bool { true }
+    fn is_source(&self) -> bool {
+        true
+    }
 }
 
 pub fn generate_sine_wave(frequency: f64, duration: f64, sample_rate: f64) -> Vec<f64> {

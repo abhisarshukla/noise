@@ -1,9 +1,15 @@
 use clap::Parser;
-
-use noise::sources::SineWaveSource;
-use noise::processors::VolumeProcessor;
+use color_eyre::{
+    Result,
+    eyre,
+};
 use noise::analysers::PeakAnalyser;
-use noise::audio::{Pipeline, write_wav};
+use noise::audio::{
+    Pipeline,
+    write_wav,
+};
+use noise::processors::VolumeProcessor;
+use noise::sources::SineWaveSource;
 
 #[derive(Parser)]
 #[command(author, version, about = "Generate audio with composable pipeline")]
@@ -25,19 +31,19 @@ struct Cli {
     output: String,
 }
 
-fn main() {
+fn main() -> Result<()> {
+    color_eyre::install()?;
+
     let cli = Cli::parse();
 
     if cli.pipeline.is_empty() {
-        eprintln!("Pipeline is required. Use --pipeline \"sine:440,peak,volume:0.5\"");
-        std::process::exit(1);
+        eyre::bail!("Pipeline is required. Use --pipeline 'sine:440,peak,volume:0.5'");
     }
 
     let components: Vec<&str> = cli.pipeline.split(',').map(|s| s.trim()).collect();
 
     if components.is_empty() {
-        eprintln!("Pipeline must have at least one component, starting with a source.");
-        std::process::exit(1);
+        eyre::bail!("Pipeline must have at least one component, starting with a source.");
     }
 
     let mut pipeline = Pipeline::new();
@@ -45,43 +51,19 @@ fn main() {
     for spec in components {
         let parts: Vec<&str> = spec.split(':').collect();
         let comp: Box<dyn noise::traits::Component> = match parts[0] {
-            "sine" => Box::new(SineWaveSource::from_spec(spec).map_err(|e| {
-                eprintln!("Error creating sine: {}", e);
-                std::process::exit(1);
-            }).unwrap()),
-            "volume" => Box::new(VolumeProcessor::from_spec(spec).map_err(|e| {
-                eprintln!("Error creating volume: {}", e);
-                std::process::exit(1);
-            }).unwrap()),
-            "peak" => Box::new(PeakAnalyser::from_spec(spec).map_err(|e| {
-                eprintln!("Error creating peak: {}", e);
-                std::process::exit(1);
-            }).unwrap()),
-            _ => {
-                eprintln!("Unknown component type: {}", parts[0]);
-                std::process::exit(1);
-            }
+            "sine" => Box::new(SineWaveSource::from_spec(spec)?),
+            "volume" => Box::new(VolumeProcessor::from_spec(spec)?),
+            "peak" => Box::new(PeakAnalyser::from_spec(spec)?),
+            _ => eyre::bail!("Unknown component type: {}", parts[0]),
         };
-        if let Err(e) = pipeline.add_component(comp) {
-            eprintln!("Error adding component: {}", e);
-            std::process::exit(1);
-        }
+        pipeline.add_component(comp)?;
     }
 
-    match pipeline.run(cli.duration, cli.sample_rate) {
-        Ok(samples) => {
-            println!("Generated {} samples", samples.len());
+    let samples = pipeline.run(cli.duration, cli.sample_rate)?;
+    println!("Generated {} samples", samples.len());
 
-            if let Err(e) = write_wav(&cli.output, &samples, cli.sample_rate) {
-                eprintln!("Error writing WAV file: {}", e);
-                std::process::exit(1);
-            } else {
-                println!("Saved samples to {}", cli.output);
-            }
-        }
-        Err(e) => {
-            eprintln!("Error running pipeline: {}", e);
-            std::process::exit(1);
-        }
-    }
+    write_wav(&cli.output, &samples, cli.sample_rate)?;
+    println!("Saved samples to {}", cli.output);
+
+    Ok(())
 }

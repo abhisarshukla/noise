@@ -1,5 +1,6 @@
+use color_eyre::Result;
+use color_eyre::eyre::bail;
 use hound;
-use std::error::Error;
 
 use crate::traits::Component;
 
@@ -9,20 +10,18 @@ pub struct Pipeline {
 
 impl Pipeline {
     pub fn new() -> Self {
-        Self {
-            components: Vec::new(),
-        }
+        Self { components: Vec::new() }
     }
 
-    pub fn add_component(&mut self, component: Box<dyn Component>) -> Result<(), Box<dyn Error>> {
+    pub fn add_component(&mut self, component: Box<dyn Component>) -> Result<()> {
         if self.components.is_empty() && !component.is_source() {
-            return Err("Pipeline must start with a Source".into());
+            bail!("Pipeline must start with a Source");
         }
         self.components.push(component);
         Ok(())
     }
 
-    pub fn run(&mut self, duration: f64, sample_rate: f64) -> Result<Vec<f64>, Box<dyn Error>> {
+    pub fn run(&mut self, duration: f64, sample_rate: f64) -> Result<Vec<f64>> {
         let mut buffer = Vec::new();
         for component in &mut self.components {
             component.process(&mut buffer, duration, sample_rate)?;

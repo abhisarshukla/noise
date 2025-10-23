@@ -1,0 +1,17 @@
+max_width = 100
+tab_spaces = 4
+edition = "2024"
+style_edition = "2024"
+merge_derives = true
+newline_style = "Unix"
+use_small_heuristics = "Max"
+reorder_imports = true
+reorder_modules = true
+remove_nested_parens = true
+use_try_shorthand = true
+use_field_init_shorthand = false
+group_imports = "StdExternalCrate"
+imports_granularity = "Module"
+imports_layout = "Vertical"
+trailing_semicolon = false
+normalize_comments = true

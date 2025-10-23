@@ -1,0 +1,8 @@
+[package]
+name = "noise"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { version = "4.0", features = ["derive"] }
+hound = "3.5"

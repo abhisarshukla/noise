@@ -9,6 +9,33 @@ use crate::traits::{
     Processor,
 };
 
+pub struct VolumeParams {
+    pub level: f64,
+}
+
+impl Default for VolumeParams {
+    fn default() -> Self {
+        Self { level: 1.0 }
+    }
+}
+
+impl VolumeParams {
+    pub fn parse(params: &[&str]) -> Result<Self> {
+        let mut result = Self::default();
+        for param in params {
+            let kv: Vec<&str> = param.split('=').collect();
+            if kv.len() != 2 {
+                bail!("Invalid parameter format: {}", param);
+            }
+            match kv[0] {
+                "level" => result.level = kv[1].parse().map_err(|_| eyre!("Invalid level value"))?,
+                _ => bail!("Unknown parameter: {}", kv[0]),
+            }
+        }
+        Ok(result)
+    }
+}
+
 pub struct VolumeProcessor {
     pub volume: f64,
 }
@@ -23,19 +50,8 @@ impl VolumeProcessor {
         if parts[0] != "volume" {
             bail!("Not a volume spec");
         }
-        let mut volume = None;
-        for param in &parts[1..] {
-            let kv: Vec<&str> = param.split('=').collect();
-            if kv.len() != 2 {
-                bail!("Invalid parameter format: {}", param);
-            }
-            match kv[0] {
-                "level" => volume = Some(kv[1].parse().map_err(|_| eyre!("Invalid volume"))?),
-                _ => bail!("Unknown parameter: {}", kv[0]),
-            }
-        }
-        let volume = volume.ok_or_else(|| eyre!("Missing required parameter: level"))?;
-        Ok(Self::new(volume))
+        let params = VolumeParams::parse(&parts[1..])?;
+        Ok(Self::new(params.level))
     }
 }
 

@@ -9,6 +9,33 @@ use crate::traits::{
     Source,
 };
 
+pub struct SineParams {
+    pub freq: f64,
+}
+
+impl Default for SineParams {
+    fn default() -> Self {
+        Self { freq: 440.0 }
+    }
+}
+
+impl SineParams {
+    pub fn parse(params: &[&str]) -> Result<Self> {
+        let mut result = Self::default();
+        for param in params {
+            let kv: Vec<&str> = param.split('=').collect();
+            if kv.len() != 2 {
+                bail!("Invalid parameter format: {}", param);
+            }
+            match kv[0] {
+                "freq" => result.freq = kv[1].parse().map_err(|_| eyre!("Invalid freq value"))?,
+                _ => bail!("Unknown parameter: {}", kv[0]),
+            }
+        }
+        Ok(result)
+    }
+}
+
 pub struct SineWaveSource {
     pub frequency: f64,
 }
@@ -23,19 +50,8 @@ impl SineWaveSource {
         if parts[0] != "sine" {
             bail!("Not a sine spec");
         }
-        let mut freq = None;
-        for param in &parts[1..] {
-            let kv: Vec<&str> = param.split('=').collect();
-            if kv.len() != 2 {
-                bail!("Invalid parameter format: {}", param);
-            }
-            match kv[0] {
-                "freq" => freq = Some(kv[1].parse().map_err(|_| eyre!("Invalid frequency"))?),
-                _ => bail!("Unknown parameter: {}", kv[0]),
-            }
-        }
-        let freq = freq.ok_or_else(|| eyre!("Missing required parameter: freq"))?;
-        Ok(Self::new(freq))
+        let params = SineParams::parse(&parts[1..])?;
+        Ok(Self::new(params.freq))
     }
 }
 

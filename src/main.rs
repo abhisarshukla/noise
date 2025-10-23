@@ -2,6 +2,7 @@ use clap::Parser;
 
 use noise::sources::SineWaveSource;
 use noise::processors::VolumeProcessor;
+use noise::analysers::PeakAnalyser;
 use noise::audio::{Pipeline, write_wav};
 
 #[derive(Parser)]
@@ -24,33 +25,6 @@ struct Cli {
     output: String,
 }
 
-fn create_component(spec: &str) -> Result<Box<dyn noise::traits::Component>, String> {
-    let parts: Vec<&str> = spec.split(':').collect();
-    match parts[0] {
-        "sine" => {
-            if parts.len() != 2 {
-                return Err("sine requires frequency: sine:440".to_string());
-            }
-            let freq = parts[1].parse().map_err(|_| "Invalid frequency".to_string())?;
-            Ok(Box::new(SineWaveSource::new(freq)))
-        }
-        "volume" => {
-            if parts.len() != 2 {
-                return Err("volume requires level: volume:0.5".to_string());
-            }
-            let volume = parts[1].parse().map_err(|_| "Invalid volume".to_string())?;
-            Ok(Box::new(VolumeProcessor::new(volume)))
-        }
-        "peak" => {
-            if parts.len() != 1 {
-                return Err("peak takes no params: peak".to_string());
-            }
-            Ok(Box::new(noise::analysers::PeakAnalyser::new()))
-        }
-        _ => Err(format!("Unknown component type: {}", parts[0])),
-    }
-}
-
 fn main() {
     let cli = Cli::parse();
 
@@ -69,10 +43,25 @@ fn main() {
     let mut pipeline = Pipeline::new();
 
     for spec in components {
-        let comp = create_component(spec).map_err(|e| {
-            eprintln!("Error creating component '{}': {}", spec, e);
-            std::process::exit(1);
-        }).unwrap();
+        let parts: Vec<&str> = spec.split(':').collect();
+        let comp: Box<dyn noise::traits::Component> = match parts[0] {
+            "sine" => Box::new(SineWaveSource::from_spec(spec).map_err(|e| {
+                eprintln!("Error creating sine: {}", e);
+                std::process::exit(1);
+            }).unwrap()),
+            "volume" => Box::new(VolumeProcessor::from_spec(spec).map_err(|e| {
+                eprintln!("Error creating volume: {}", e);
+                std::process::exit(1);
+            }).unwrap()),
+            "peak" => Box::new(PeakAnalyser::from_spec(spec).map_err(|e| {
+                eprintln!("Error creating peak: {}", e);
+                std::process::exit(1);
+            }).unwrap()),
+            _ => {
+                eprintln!("Unknown component type: {}", parts[0]);
+                std::process::exit(1);
+            }
+        };
         if let Err(e) = pipeline.add_component(comp) {
             eprintln!("Error adding component: {}", e);
             std::process::exit(1);
@@ -82,12 +71,6 @@ fn main() {
     match pipeline.run(cli.duration, cli.sample_rate) {
         Ok(samples) => {
             println!("Generated {} samples", samples.len());
-
-            // Collect and print analyser results
-            let analyser_results = pipeline.collect_analyser_results();
-            for (i, result) in analyser_results.iter().enumerate() {
-                println!("Analyser {} peak: {:.6}", i + 1, result);
-            }
 
             if let Err(e) = write_wav(&cli.output, &samples, cli.sample_rate) {
                 eprintln!("Error writing WAV file: {}", e);

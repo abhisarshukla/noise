@@ -9,6 +9,17 @@ impl PeakAnalyser {
     pub fn new() -> Self {
         Self { last_peak: None }
     }
+
+    pub fn from_spec(spec: &str) -> Result<Self, String> {
+        let parts: Vec<&str> = spec.split(':').collect();
+        if parts[0] != "peak" {
+            return Err("Not a peak spec".to_string());
+        }
+        if parts.len() != 1 {
+            return Err("peak takes no params: peak".to_string());
+        }
+        Ok(Self::new())
+    }
 }
 
 impl Analyser for PeakAnalyser {
@@ -32,9 +43,5 @@ impl Component for PeakAnalyser {
         }
         self.analyze(buffer);
         Ok(())
-    }
-
-    fn get_analyser_result(&mut self) -> Option<f64> {
-        self.get_result()
     }
 }

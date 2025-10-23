@@ -29,10 +29,6 @@ impl Pipeline {
         }
         Ok(buffer)
     }
-
-    pub fn collect_analyser_results(&mut self) -> Vec<f64> {
-        self.components.iter_mut().filter_map(|c| c.get_analyser_result()).collect()
-    }
 }
 
 pub fn write_wav(filename: &str, samples: &[f64], sample_rate: f64) -> Result<(), hound::Error> {

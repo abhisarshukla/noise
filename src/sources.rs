@@ -9,6 +9,18 @@ impl SineWaveSource {
     pub fn new(frequency: f64) -> Self {
         Self { frequency }
     }
+
+    pub fn from_spec(spec: &str) -> Result<Self, String> {
+        let parts: Vec<&str> = spec.split(':').collect();
+        if parts[0] != "sine" {
+            return Err("Not a sine spec".to_string());
+        }
+        if parts.len() != 2 {
+            return Err("sine requires frequency: sine:440".to_string());
+        }
+        let freq = parts[1].parse().map_err(|_| "Invalid frequency".to_string())?;
+        Ok(Self::new(freq))
+    }
 }
 
 impl Source for SineWaveSource {

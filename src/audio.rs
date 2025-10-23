@@ -1,6 +1,39 @@
 use hound;
+use std::error::Error;
 
-use crate::traits::Source;
+use crate::traits::Component;
+
+pub struct Pipeline {
+    components: Vec<Box<dyn Component>>,
+}
+
+impl Pipeline {
+    pub fn new() -> Self {
+        Self {
+            components: Vec::new(),
+        }
+    }
+
+    pub fn add_component(&mut self, component: Box<dyn Component>) -> Result<(), Box<dyn Error>> {
+        if self.components.is_empty() && !component.is_source() {
+            return Err("Pipeline must start with a Source".into());
+        }
+        self.components.push(component);
+        Ok(())
+    }
+
+    pub fn run(&mut self, duration: f64, sample_rate: f64) -> Result<Vec<f64>, Box<dyn Error>> {
+        let mut buffer = Vec::new();
+        for component in &mut self.components {
+            component.process(&mut buffer, duration, sample_rate)?;
+        }
+        Ok(buffer)
+    }
+
+    pub fn collect_analyser_results(&mut self) -> Vec<f64> {
+        self.components.iter_mut().filter_map(|c| c.get_analyser_result()).collect()
+    }
+}
 
 pub fn write_wav(filename: &str, samples: &[f64], sample_rate: f64) -> Result<(), hound::Error> {
     let spec = hound::WavSpec {
@@ -18,12 +51,5 @@ pub fn write_wav(filename: &str, samples: &[f64], sample_rate: f64) -> Result<()
     }
 
     writer.finalize()?;
-    Ok(())
-}
-
-pub fn generate_audio<S: Source>(source: &S, duration: f64, sample_rate: f64, output: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let samples = source.generate(duration, sample_rate);
-    println!("Generated {} samples", samples.len());
-    write_wav(output, &samples, sample_rate)?;
     Ok(())
 }

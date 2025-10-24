@@ -7,6 +7,10 @@ use noise::audio::{
     write_wav,
     write_wav_to_bytes,
 };
+use noise::context::{
+    init_context,
+    AppContext,
+};
 use noise::factory::create_component;
 use noise::pipeline::{
     Pipeline,
@@ -168,6 +172,9 @@ fn main() -> Result<()> {
         "Parsed CLI arguments: pipeline={}, duration={}s, sample_rate={}Hz, output={}",
         cli.pipeline, cli.duration, cli.sample_rate, cli.output
     );
+
+    let context = AppContext::new(cli.html.clone());
+    init_context(context);
 
     run_pipeline(&cli)?;
 

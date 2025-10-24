@@ -730,6 +730,7 @@ dependencies = [
  "clap",
  "color-eyre",
  "hound",
+ "once_cell",
  "plotters",
  "plotters-svg",
  "tracing",

@@ -2,6 +2,8 @@ use clap::Parser;
 use color_eyre::{eyre::Result, eyre::bail};
 use noise::audio::{Pipeline, write_wav};
 use noise::factory::create_component;
+use tracing::{info, instrument, debug, span, Level};
+use tracing_subscriber::EnvFilter;
 
 #[derive(Parser)]
 #[command(author, version, about = "Generate audio with composable pipeline")]
@@ -23,6 +25,7 @@ struct Cli {
     output: String,
 }
 
+#[instrument(level = "debug")]
 fn parse_components(pipeline: &str) -> Vec<String> {
     let mut components = Vec::new();
     let mut current = String::new();
@@ -50,14 +53,17 @@ fn parse_components(pipeline: &str) -> Vec<String> {
     if !current.trim().is_empty() {
         components.push(current.trim().to_string());
     }
+
+    debug!("Parsed {} components from pipeline", components.len());
+    for (i, comp) in components.iter().enumerate() {
+        debug!("Component {}: {}", i, comp);
+    }
+
     components
 }
 
-fn main() -> Result<()> {
-    color_eyre::install()?;
-
-    let cli = Cli::parse();
-
+#[instrument(skip(cli), fields(pipeline = %cli.pipeline, duration = %cli.duration, sample_rate = %cli.sample_rate, output = %cli.output))]
+fn run_pipeline(cli: &Cli) -> Result<()> {
     if cli.pipeline.is_empty() {
         bail!("Pipeline is required. Use --pipeline 'sine:freq=440,peak,volume:level=0.5'");
     }
@@ -68,18 +74,57 @@ fn main() -> Result<()> {
         bail!("Pipeline must have at least one component, starting with a source.");
     }
 
+    info!("Building pipeline with {} components", components.len());
     let mut pipeline = Pipeline::new();
 
-    for spec in &components {
+    for (i, spec) in components.iter().enumerate() {
+        let _span = span!(Level::DEBUG, "add_component", index = i, spec = %spec).entered();
+        debug!("Creating component {} from spec: {}", i, spec);
         let comp = create_component(spec)?;
         pipeline.add_component(comp)?;
+        info!("Added component {}: {}", i, spec);
     }
 
+    info!("Running pipeline to generate audio");
     let samples = pipeline.run(cli.duration, cli.sample_rate)?;
-    println!("Generated {} samples", samples.len());
+    info!("Generated {} samples", samples.len());
 
+    let _span = span!(Level::INFO, "write_output", file = %cli.output).entered();
     write_wav(&cli.output, &samples, cli.sample_rate)?;
-    println!("Saved samples to {}", cli.output);
+    info!("Saved {} samples to {}", samples.len(), cli.output);
 
+    Ok(())
+}
+
+fn init_tracing() {
+    // Set RUST_LOG environment variable to control verbosity
+    // Example: RUST_LOG=debug cargo run ...
+    //          RUST_LOG=noise=trace cargo run ...
+    let env_filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new("noise=info"));
+
+    // Using pretty format for readable, human-friendly output
+    tracing_subscriber::fmt()
+        .pretty()
+        .with_env_filter(env_filter)
+        .with_target(true)
+        .with_line_number(true)
+        .with_file(true)
+        .init();
+}
+
+fn main() -> Result<()> {
+    color_eyre::install()?;
+    init_tracing();
+
+    info!("Audio pipeline application started");
+
+    let cli = Cli::parse();
+    debug!("Parsed CLI arguments: pipeline={}, duration={}s, sample_rate={}Hz, output={}",
+           cli.pipeline, cli.duration, cli.sample_rate, cli.output);
+
+    run_pipeline(&cli)?;
+
+    info!("Application completed successfully");
     Ok(())
 }

@@ -4,7 +4,9 @@ use crate::processors::VolumeProcessor;
 use crate::analysers::PeakAnalyser;
 use crate::composite::Parallel;
 use color_eyre::eyre::{Result, bail};
+use tracing::instrument;
 
+#[instrument]
 pub fn create_component(spec: &str) -> Result<Box<dyn Component>> {
     let parts: Vec<&str> = spec.split(':').collect();
     let comp: Box<dyn Component> = match parts[0] {

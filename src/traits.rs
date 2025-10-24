@@ -9,8 +9,6 @@ pub trait Component {
         None
     }
 
-    /// Render component as HTML with complete freedom
-    /// Returns the full HTML string for this component's visualization
     fn render_html(
         &self,
         input_samples: &[f64],
@@ -19,10 +17,8 @@ pub trait Component {
         total: usize,
     ) -> Result<String>;
 
-    /// Get component name
     fn name(&self) -> String;
 
-    /// Get component type
     fn component_type(&self) -> &'static str;
 }
 

@@ -8,6 +8,7 @@ use crate::traits::{
     Component,
     Source,
 };
+use tracing::debug;
 
 pub struct SineParams {
     pub freq: f64,
@@ -70,6 +71,10 @@ impl Component for SineWaveSource {
     fn is_source(&self) -> bool {
         true
     }
+
+    fn get_samples(&self, duration: f64, sample_rate: f64) -> Option<Vec<f64>> {
+        Some(self.generate(duration, sample_rate))
+    }
 }
 
 pub fn generate_sine_wave(frequency: f64, duration: f64, sample_rate: f64) -> Vec<f64> {
@@ -85,3 +90,87 @@ pub fn generate_sine_wave(frequency: f64, duration: f64, sample_rate: f64) -> Ve
 
     samples
 }
+
+pub struct SquareParams {
+    pub freq: f64,
+}
+
+impl Default for SquareParams {
+    fn default() -> Self {
+        Self { freq: 440.0 }
+    }
+}
+
+impl SquareParams {
+    pub fn parse(params: &[&str]) -> Result<Self> {
+        let mut result = Self::default();
+        for param in params {
+            let kv: Vec<&str> = param.split('=').collect();
+            if kv.len() != 2 {
+                bail!("Invalid parameter format: {}", param);
+            }
+            match kv[0] {
+                "freq" => result.freq = kv[1].parse().map_err(|_| eyre!("Invalid freq value"))?,
+                _ => bail!("Unknown parameter: {}", kv[0]),
+            }
+        }
+        Ok(result)
+    }
+}
+
+pub struct SquareWaveSource {
+    pub frequency: f64,
+}
+
+impl SquareWaveSource {
+    pub fn new(frequency: f64) -> Self {
+        Self { frequency }
+    }
+
+    pub fn from_spec(spec: &str) -> Result<Self> {
+        let parts: Vec<&str> = spec.split(':').collect();
+        if parts[0] != "square" {
+            bail!("Not a square spec");
+        }
+        let params = SquareParams::parse(&parts[1..])?;
+        Ok(Self::new(params.freq))
+    }
+}
+
+impl Source for SquareWaveSource {
+    fn generate(&self, duration: f64, sample_rate: f64) -> Vec<f64> {
+        generate_square_wave(self.frequency, duration, sample_rate)
+    }
+}
+
+impl Component for SquareWaveSource {
+    fn process(&mut self, buffer: &mut Vec<f64>, duration: f64, sample_rate: f64) -> Result<()> {
+        *buffer = self.generate(duration, sample_rate);
+        Ok(())
+    }
+
+    fn is_source(&self) -> bool {
+        true
+    }
+
+    fn get_samples(&self, duration: f64, sample_rate: f64) -> Option<Vec<f64>> {
+        Some(self.generate(duration, sample_rate))
+    }
+}
+
+pub fn generate_square_wave(frequency: f64, duration: f64, sample_rate: f64) -> Vec<f64> {
+    let num_samples = (duration * sample_rate) as usize;
+    debug!("Generating {} samples of square wave at {} Hz", num_samples, frequency);
+    let mut samples = Vec::with_capacity(num_samples);
+    let period_samples = (sample_rate / frequency) as usize;
+
+    for i in 0..num_samples {
+        let phase = (i % period_samples) as f64 / period_samples as f64;
+        let sample = if phase < 0.5 { 1.0 } else { -1.0 };
+        samples.push(sample);
+    }
+
+    samples
+}
+
+

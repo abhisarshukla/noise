@@ -1,15 +1,7 @@
 use clap::Parser;
-use color_eyre::{
-    Result,
-    eyre,
-};
-use noise::analysers::PeakAnalyser;
-use noise::audio::{
-    Pipeline,
-    write_wav,
-};
-use noise::processors::VolumeProcessor;
-use noise::sources::SineWaveSource;
+use color_eyre::{eyre::Result, eyre::bail};
+use noise::audio::{Pipeline, write_wav};
+use noise::factory::create_component;
 
 #[derive(Parser)]
 #[command(author, version, about = "Generate audio with composable pipeline")]
@@ -31,31 +23,55 @@ struct Cli {
     output: String,
 }
 
+fn parse_components(pipeline: &str) -> Vec<String> {
+    let mut components = Vec::new();
+    let mut current = String::new();
+    let mut bracket_level = 0;
+
+    for ch in pipeline.chars() {
+        match ch {
+            '[' => {
+                bracket_level += 1;
+                current.push(ch);
+            }
+            ']' => {
+                bracket_level -= 1;
+                current.push(ch);
+            }
+            ',' if bracket_level == 0 => {
+                if !current.trim().is_empty() {
+                    components.push(current.trim().to_string());
+                }
+                current.clear();
+            }
+            _ => current.push(ch),
+        }
+    }
+    if !current.trim().is_empty() {
+        components.push(current.trim().to_string());
+    }
+    components
+}
+
 fn main() -> Result<()> {
     color_eyre::install()?;
 
     let cli = Cli::parse();
 
     if cli.pipeline.is_empty() {
-        eyre::bail!("Pipeline is required. Use --pipeline 'sine:freq=440,peak,volume:level=0.5'");
+        bail!("Pipeline is required. Use --pipeline 'sine:freq=440,peak,volume:level=0.5'");
     }
 
-    let components: Vec<&str> = cli.pipeline.split(',').map(|s| s.trim()).collect();
+    let components = parse_components(&cli.pipeline);
 
     if components.is_empty() {
-        eyre::bail!("Pipeline must have at least one component, starting with a source.");
+        bail!("Pipeline must have at least one component, starting with a source.");
     }
 
     let mut pipeline = Pipeline::new();
 
-    for spec in components {
-        let parts: Vec<&str> = spec.split(':').collect();
-        let comp: Box<dyn noise::traits::Component> = match parts[0] {
-            "sine" => Box::new(SineWaveSource::from_spec(spec)?),
-            "volume" => Box::new(VolumeProcessor::from_spec(spec)?),
-            "peak" => Box::new(PeakAnalyser::from_spec(spec)?),
-            _ => eyre::bail!("Unknown component type: {}", parts[0]),
-        };
+    for spec in &components {
+        let comp = create_component(spec)?;
         pipeline.add_component(comp)?;
     }
 

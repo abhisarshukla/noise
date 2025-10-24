@@ -6,4 +6,8 @@ pub mod processors;
 
 pub mod analysers;
 
+pub mod composite;
+
+pub mod factory;
+
 pub mod audio;

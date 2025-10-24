@@ -5,6 +5,9 @@ pub trait Component {
     fn is_source(&self) -> bool {
         false
     }
+    fn get_samples(&self, _duration: f64, _sample_rate: f64) -> Option<Vec<f64>> {
+        None
+    }
 }
 
 pub trait Source {

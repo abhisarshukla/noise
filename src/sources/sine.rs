@@ -1,14 +1,30 @@
+use askama::Template;
 use color_eyre::Result;
 use color_eyre::eyre::{
     bail,
     eyre,
+};
+use tracing::{
+    debug,
+    instrument,
 };
 
 use crate::traits::{
     Component,
     Source,
 };
-use tracing::{debug, instrument};
+
+#[derive(Template)]
+#[template(path = "components/sine.html")]
+struct SineTemplate {
+    index: usize,
+    total: usize,
+    frequency: f64,
+    output_samples: usize,
+    peak_value: String,
+    rms_value: String,
+    is_last: bool,
+}
 
 pub struct SineParams {
     pub freq: f64,
@@ -64,8 +80,10 @@ impl SineWaveSource {
 impl Source for SineWaveSource {
     #[instrument(skip(self), fields(frequency = %self.frequency, duration = %duration, sample_rate = %sample_rate))]
     fn generate(&self, duration: f64, sample_rate: f64) -> Vec<f64> {
-        debug!("Generating sine wave: {} Hz for {} seconds at {} Hz sample rate",
-               self.frequency, duration, sample_rate);
+        debug!(
+            "Generating sine wave: {} Hz for {} seconds at {} Hz sample rate",
+            self.frequency, duration, sample_rate
+        );
         generate_sine_wave(self.frequency, duration, sample_rate)
     }
 }
@@ -85,6 +103,47 @@ impl Component for SineWaveSource {
 
     fn get_samples(&self, duration: f64, sample_rate: f64) -> Option<Vec<f64>> {
         Some(self.generate(duration, sample_rate))
+    }
+
+    fn render_html(
+        &self,
+        _input_samples: &[f64],
+        output_samples: &[f64],
+        index: usize,
+        total: usize,
+    ) -> Result<String> {
+        let peak_value = if !output_samples.is_empty() {
+            format!("{:.6}", output_samples.iter().fold(0.0_f64, |acc, &x| acc.max(x.abs())))
+        } else {
+            "N/A".to_string()
+        };
+
+        let rms_value = if !output_samples.is_empty() {
+            let sum_squares: f64 = output_samples.iter().map(|&x| x * x).sum();
+            format!("{:.6}", (sum_squares / output_samples.len() as f64).sqrt())
+        } else {
+            "N/A".to_string()
+        };
+
+        let template = SineTemplate {
+            index,
+            total,
+            frequency: self.frequency,
+            output_samples: output_samples.len(),
+            peak_value,
+            rms_value,
+            is_last: index == total,
+        };
+
+        Ok(template.render()?)
+    }
+
+    fn name(&self) -> String {
+        format!("sine:freq={}", self.frequency)
+    }
+
+    fn component_type(&self) -> &'static str {
+        "Source"
     }
 }
 

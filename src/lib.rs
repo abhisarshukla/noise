@@ -11,3 +11,5 @@ pub mod composite;
 pub mod factory;
 
 pub mod audio;
+
+pub mod pipeline;

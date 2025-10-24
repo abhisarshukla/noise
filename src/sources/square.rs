@@ -3,12 +3,15 @@ use color_eyre::eyre::{
     bail,
     eyre,
 };
+use tracing::{
+    debug,
+    instrument,
+};
 
 use crate::traits::{
     Component,
     Source,
 };
-use tracing::{debug, instrument};
 
 pub struct SquareParams {
     pub freq: f64,
@@ -64,8 +67,10 @@ impl SquareWaveSource {
 impl Source for SquareWaveSource {
     #[instrument(skip(self), fields(frequency = %self.frequency, duration = %duration, sample_rate = %sample_rate))]
     fn generate(&self, duration: f64, sample_rate: f64) -> Vec<f64> {
-        debug!("Generating square wave: {} Hz for {} seconds at {} Hz sample rate",
-               self.frequency, duration, sample_rate);
+        debug!(
+            "Generating square wave: {} Hz for {} seconds at {} Hz sample rate",
+            self.frequency, duration, sample_rate
+        );
         generate_square_wave(self.frequency, duration, sample_rate)
     }
 }
@@ -85,6 +90,37 @@ impl Component for SquareWaveSource {
 
     fn get_samples(&self, duration: f64, sample_rate: f64) -> Option<Vec<f64>> {
         Some(self.generate(duration, sample_rate))
+    }
+
+    fn render_html(
+        &self,
+        _input_samples: &[f64],
+        output_samples: &[f64],
+        index: usize,
+        total: usize,
+    ) -> Result<String> {
+        let peak_value = if !output_samples.is_empty() {
+            Some(output_samples.iter().fold(0.0_f64, |acc, &x| acc.max(x.abs())))
+        } else {
+            None
+        };
+
+        Ok(format!(
+            r#"<div class="bg-gray-100 p-4 rounded"><h4>Square Wave ({}Hz) - Step {} of {}</h4><p>Output: {} samples, Peak: {:?}</p></div>"#,
+            self.frequency,
+            index,
+            total,
+            output_samples.len(),
+            peak_value
+        ))
+    }
+
+    fn name(&self) -> String {
+        format!("square:freq={}", self.frequency)
+    }
+
+    fn component_type(&self) -> &'static str {
+        "Source"
     }
 }
 

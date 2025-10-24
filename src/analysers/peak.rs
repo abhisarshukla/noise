@@ -1,11 +1,15 @@
 use color_eyre::Result;
 use color_eyre::eyre::bail;
+use tracing::{
+    debug,
+    info,
+    instrument,
+};
 
 use crate::traits::{
     Analyser,
     Component,
 };
-use tracing::{instrument, debug, info};
 
 pub struct PeakAnalyser {
     last_peak: Option<f64>,
@@ -61,5 +65,31 @@ impl Component for PeakAnalyser {
         debug!("Processing buffer of {} samples through peak analyser", buffer.len());
         self.analyze(buffer);
         Ok(())
+    }
+
+    fn render_html(
+        &self,
+        input_samples: &[f64],
+        output_samples: &[f64],
+        index: usize,
+        total: usize,
+    ) -> Result<String> {
+        // Simple HTML rendering for now
+        Ok(format!(
+            r#"<div class="bg-yellow-100 p-4 rounded"><h4>Peak Analyser - Step {} of {}</h4><p>Input: {} samples, Output: {} samples, Peak: {:?}</p></div>"#,
+            index,
+            total,
+            input_samples.len(),
+            output_samples.len(),
+            self.last_peak
+        ))
+    }
+
+    fn name(&self) -> String {
+        "peak".to_string()
+    }
+
+    fn component_type(&self) -> &'static str {
+        "Analyser"
     }
 }

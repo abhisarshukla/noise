@@ -1,10 +1,17 @@
-use crate::traits::Component;
-use crate::sources::{SineWaveSource, SquareWaveSource};
-use crate::processors::VolumeProcessor;
+use color_eyre::eyre::{
+    Result,
+    bail,
+};
+use tracing::instrument;
+
 use crate::analysers::PeakAnalyser;
 use crate::composite::Parallel;
-use color_eyre::eyre::{Result, bail};
-use tracing::instrument;
+use crate::processors::VolumeProcessor;
+use crate::sources::{
+    SineWaveSource,
+    SquareWaveSource,
+};
+use crate::traits::Component;
 
 #[instrument]
 pub fn create_component(spec: &str) -> Result<Box<dyn Component>> {

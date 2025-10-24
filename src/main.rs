@@ -1,8 +1,24 @@
 use clap::Parser;
-use color_eyre::{eyre::Result, eyre::bail};
-use noise::audio::{Pipeline, write_wav};
+use color_eyre::eyre::{
+    Result,
+    bail,
+};
+use noise::audio::{
+    write_wav,
+    write_wav_to_bytes,
+};
 use noise::factory::create_component;
-use tracing::{info, instrument, debug, span, Level};
+use noise::pipeline::{
+    Pipeline,
+    PipelineTemplate,
+};
+use tracing::{
+    Level,
+    debug,
+    info,
+    instrument,
+    span,
+};
 use tracing_subscriber::EnvFilter;
 
 #[derive(Parser)]
@@ -23,6 +39,10 @@ struct Cli {
     /// Output WAV file
     #[arg(long, default_value = "output.wav")]
     output: String,
+
+    /// Output HTML visualization file
+    #[arg(long)]
+    html: Option<String>,
 }
 
 #[instrument(level = "debug")]
@@ -85,8 +105,35 @@ fn run_pipeline(cli: &Cli) -> Result<()> {
         info!("Added component {}: {}", i, spec);
     }
 
-    info!("Running pipeline to generate audio");
-    let samples = pipeline.run(cli.duration, cli.sample_rate)?;
+    let samples = if cli.html.is_some() {
+        info!("Running pipeline with HTML tracking enabled");
+        let (samples, component_htmls) =
+            pipeline.run_with_tracking(cli.duration, cli.sample_rate)?;
+        info!("Generated {} samples", samples.len());
+
+        if let Some(html_path) = &cli.html {
+            info!("Generating HTML visualization");
+            let wav_bytes = write_wav_to_bytes(&samples, cli.sample_rate)?;
+
+            let template = PipelineTemplate::new(
+                cli.pipeline.clone(),
+                cli.duration,
+                cli.sample_rate,
+                samples.len(),
+                component_htmls,
+                &wav_bytes,
+            );
+
+            template.render_to_file(html_path)?;
+            info!("HTML visualization saved to {}", html_path);
+        }
+
+        samples
+    } else {
+        info!("Running pipeline");
+        pipeline.run(cli.duration, cli.sample_rate)?
+    };
+
     info!("Generated {} samples", samples.len());
 
     let _span = span!(Level::INFO, "write_output", file = %cli.output).entered();
@@ -97,11 +144,8 @@ fn run_pipeline(cli: &Cli) -> Result<()> {
 }
 
 fn init_tracing() {
-    // Set RUST_LOG environment variable to control verbosity
-    // Example: RUST_LOG=debug cargo run ...
-    //          RUST_LOG=noise=trace cargo run ...
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("noise=info"));
+    let env_filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("noise=info"));
 
     // Using pretty format for readable, human-friendly output
     tracing_subscriber::fmt()
@@ -120,8 +164,10 @@ fn main() -> Result<()> {
     info!("Audio pipeline application started");
 
     let cli = Cli::parse();
-    debug!("Parsed CLI arguments: pipeline={}, duration={}s, sample_rate={}Hz, output={}",
-           cli.pipeline, cli.duration, cli.sample_rate, cli.output);
+    debug!(
+        "Parsed CLI arguments: pipeline={}, duration={}s, sample_rate={}Hz, output={}",
+        cli.pipeline, cli.duration, cli.sample_rate, cli.output
+    );
 
     run_pipeline(&cli)?;
 

@@ -1,7 +1,20 @@
-use crate::traits::{Component, Source};
+use color_eyre::eyre::{
+    Result,
+    bail,
+};
+use tracing::{
+    Level,
+    debug,
+    info,
+    instrument,
+    span,
+};
+
 use crate::factory::create_component;
-use color_eyre::eyre::{Result, bail};
-use tracing::{instrument, debug, info, span, Level};
+use crate::traits::{
+    Component,
+    Source,
+};
 
 pub struct Parallel {
     pub components: Vec<Box<dyn Component>>,
@@ -37,7 +50,8 @@ impl Parallel {
             if c_spec.is_empty() {
                 continue;
             }
-            let _span = span!(Level::DEBUG, "create_parallel_component", index = i, spec = %c_spec).entered();
+            let _span = span!(Level::DEBUG, "create_parallel_component", index = i, spec = %c_spec)
+                .entered();
             debug!("Creating parallel component {}: {}", i, c_spec);
             let comp = create_component(c_spec)?;
             components.push(comp);
@@ -52,7 +66,11 @@ impl Source for Parallel {
     #[instrument(skip(self), fields(duration = %duration, sample_rate = %sample_rate, num_components = %self.components.len()))]
     fn generate(&self, duration: f64, sample_rate: f64) -> Vec<f64> {
         let num_samples = (duration * sample_rate) as usize;
-        debug!("Generating {} samples from {} parallel components", num_samples, self.components.len());
+        debug!(
+            "Generating {} samples from {} parallel components",
+            num_samples,
+            self.components.len()
+        );
 
         let mut mixed = vec![0.0; num_samples];
 
@@ -97,5 +115,31 @@ impl Component for Parallel {
 
     fn get_samples(&self, duration: f64, sample_rate: f64) -> Option<Vec<f64>> {
         Some(self.generate(duration, sample_rate))
+    }
+
+    fn render_html(
+        &self,
+        _input_samples: &[f64],
+        output_samples: &[f64],
+        index: usize,
+        total: usize,
+    ) -> Result<String> {
+        // Simple HTML rendering for now
+        Ok(format!(
+            r#"<div class="bg-purple-100 p-4 rounded"><h4>Parallel Mixer ({} sources) - Step {} of {}</h4><p>Output: {} samples</p></div>"#,
+            self.components.len(),
+            index,
+            total,
+            output_samples.len()
+        ))
+    }
+
+    fn name(&self) -> String {
+        let component_names: Vec<String> = self.components.iter().map(|c| c.name()).collect();
+        format!("parallel:[{}]", component_names.join(","))
+    }
+
+    fn component_type(&self) -> &'static str {
+        "Composite"
     }
 }

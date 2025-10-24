@@ -4,8 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+askama = "0.12"
+base64 = "0.21"
 clap = { version = "4.0", features = ["derive"] }
-hound = "3.5"
 color-eyre = "0.6"
+hound = "3.5"
+plotters = "0.3"
+plotters-svg = "0.3"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }

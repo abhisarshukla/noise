@@ -1,3 +1,6 @@
 mod volume;
 
-pub use volume::{VolumeProcessor, VolumeParams};
+pub use volume::{
+    VolumeParams,
+    VolumeProcessor,
+};

@@ -15,3 +15,5 @@ pub mod factory;
 pub mod audio;
 
 pub mod pipeline;
+
+pub mod parser;

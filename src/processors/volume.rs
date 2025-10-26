@@ -1,4 +1,3 @@
-use askama::Template;
 use color_eyre::Result;
 use color_eyre::eyre::{
     bail,
@@ -14,19 +13,6 @@ use crate::traits::{
     Component,
     Processor,
 };
-
-#[derive(Template)]
-#[template(path = "components/volume.html")]
-struct VolumeTemplate {
-    index: usize,
-    total: usize,
-    level: f64,
-    input_samples: usize,
-    output_samples: usize,
-    peak_value: String,
-    rms_value: String,
-    is_last: bool,
-}
 
 pub struct VolumeParams {
     pub level: f64,
@@ -101,41 +87,6 @@ impl Component for VolumeProcessor {
         debug!("Processing {} samples through volume processor", buffer.len());
         Processor::process(self, buffer);
         Ok(())
-    }
-
-    fn render_html(
-        &self,
-        input_samples: &[f64],
-        output_samples: &[f64],
-        index: usize,
-        total: usize,
-    ) -> Result<String> {
-        // Calculate peak and RMS
-        let peak_value = if !output_samples.is_empty() {
-            format!("{:.6}", output_samples.iter().fold(0.0_f64, |acc, &x| acc.max(x.abs())))
-        } else {
-            "N/A".to_string()
-        };
-
-        let rms_value = if !output_samples.is_empty() {
-            let sum_squares: f64 = output_samples.iter().map(|&x| x * x).sum();
-            format!("{:.6}", (sum_squares / output_samples.len() as f64).sqrt())
-        } else {
-            "N/A".to_string()
-        };
-
-        let template = VolumeTemplate {
-            index,
-            total,
-            level: self.volume,
-            input_samples: input_samples.len(),
-            output_samples: output_samples.len(),
-            peak_value,
-            rms_value,
-            is_last: index == total,
-        };
-
-        Ok(template.render()?)
     }
 
     fn name(&self) -> String {

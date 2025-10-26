@@ -3,19 +3,9 @@ use color_eyre::eyre::{
     Result,
     bail,
 };
-use noise::audio::{
-    write_wav,
-    write_wav_to_bytes,
-};
-use noise::context::{
-    init_context,
-    AppContext,
-};
+use noise::audio::write_wav;
 use noise::factory::create_component;
-use noise::pipeline::{
-    Pipeline,
-    PipelineTemplate,
-};
+use noise::pipeline::Pipeline;
 use tracing::{
     Level,
     debug,
@@ -43,10 +33,6 @@ struct Cli {
     /// Output WAV file
     #[arg(long, default_value = "output.wav")]
     output: String,
-
-    /// Output HTML visualization file
-    #[arg(long)]
-    html: Option<String>,
 }
 
 #[instrument(level = "debug")]
@@ -109,35 +95,8 @@ fn run_pipeline(cli: &Cli) -> Result<()> {
         info!("Added component {}: {}", i, spec);
     }
 
-    let samples = if cli.html.is_some() {
-        info!("Running pipeline with HTML tracking enabled");
-        let (samples, component_htmls) =
-            pipeline.run_with_tracking(cli.duration, cli.sample_rate)?;
-        info!("Generated {} samples", samples.len());
-
-        if let Some(html_path) = &cli.html {
-            info!("Generating HTML visualization");
-            let wav_bytes = write_wav_to_bytes(&samples, cli.sample_rate)?;
-
-            let template = PipelineTemplate::new(
-                cli.pipeline.clone(),
-                cli.duration,
-                cli.sample_rate,
-                samples.len(),
-                component_htmls,
-                &wav_bytes,
-            );
-
-            template.render_to_file(html_path)?;
-            info!("HTML visualization saved to {}", html_path);
-        }
-
-        samples
-    } else {
-        info!("Running pipeline");
-        pipeline.run(cli.duration, cli.sample_rate)?
-    };
-
+    info!("Running pipeline");
+    let samples = pipeline.run(cli.duration, cli.sample_rate)?;
     info!("Generated {} samples", samples.len());
 
     let _span = span!(Level::INFO, "write_output", file = %cli.output).entered();
@@ -172,9 +131,6 @@ fn main() -> Result<()> {
         "Parsed CLI arguments: pipeline={}, duration={}s, sample_rate={}Hz, output={}",
         cli.pipeline, cli.duration, cli.sample_rate, cli.output
     );
-
-    let context = AppContext::new(cli.html.clone());
-    init_context(context);
 
     run_pipeline(&cli)?;
 

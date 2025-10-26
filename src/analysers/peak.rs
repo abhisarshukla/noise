@@ -67,24 +67,6 @@ impl Component for PeakAnalyser {
         Ok(())
     }
 
-    fn render_html(
-        &self,
-        input_samples: &[f64],
-        output_samples: &[f64],
-        index: usize,
-        total: usize,
-    ) -> Result<String> {
-        // Simple HTML rendering for now
-        Ok(format!(
-            r#"<div class="bg-yellow-100 p-4 rounded"><h4>Peak Analyser - Step {} of {}</h4><p>Input: {} samples, Output: {} samples, Peak: {:?}</p></div>"#,
-            index,
-            total,
-            input_samples.len(),
-            output_samples.len(),
-            self.last_peak
-        ))
-    }
-
     fn name(&self) -> String {
         "peak".to_string()
     }

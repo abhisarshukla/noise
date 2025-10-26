@@ -117,23 +117,6 @@ impl Component for Parallel {
         Some(self.generate(duration, sample_rate))
     }
 
-    fn render_html(
-        &self,
-        _input_samples: &[f64],
-        output_samples: &[f64],
-        index: usize,
-        total: usize,
-    ) -> Result<String> {
-        // Simple HTML rendering for now
-        Ok(format!(
-            r#"<div class="bg-purple-100 p-4 rounded"><h4>Parallel Mixer ({} sources) - Step {} of {}</h4><p>Output: {} samples</p></div>"#,
-            self.components.len(),
-            index,
-            total,
-            output_samples.len()
-        ))
-    }
-
     fn name(&self) -> String {
         let component_names: Vec<String> = self.components.iter().map(|c| c.name()).collect();
         format!("parallel:[{}]", component_names.join(","))

@@ -92,29 +92,6 @@ impl Component for SquareWaveSource {
         Some(self.generate(duration, sample_rate))
     }
 
-    fn render_html(
-        &self,
-        _input_samples: &[f64],
-        output_samples: &[f64],
-        index: usize,
-        total: usize,
-    ) -> Result<String> {
-        let peak_value = if !output_samples.is_empty() {
-            Some(output_samples.iter().fold(0.0_f64, |acc, &x| acc.max(x.abs())))
-        } else {
-            None
-        };
-
-        Ok(format!(
-            r#"<div class="bg-gray-100 p-4 rounded"><h4>Square Wave ({}Hz) - Step {} of {}</h4><p>Output: {} samples, Peak: {:?}</p></div>"#,
-            self.frequency,
-            index,
-            total,
-            output_samples.len(),
-            peak_value
-        ))
-    }
-
     fn name(&self) -> String {
         format!("square:freq={}", self.frequency)
     }

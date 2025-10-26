@@ -9,14 +9,6 @@ pub trait Component {
         None
     }
 
-    fn render_html(
-        &self,
-        input_samples: &[f64],
-        output_samples: &[f64],
-        index: usize,
-        total: usize,
-    ) -> Result<String>;
-
     fn name(&self) -> String;
 
     fn component_type(&self) -> &'static str;

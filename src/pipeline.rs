@@ -1,9 +1,3 @@
-use std::fs;
-use std::path::Path;
-
-use askama::Template;
-use base64::Engine as _;
-use base64::engine::general_purpose;
 use color_eyre::Result;
 use color_eyre::eyre::bail;
 use tracing::{
@@ -20,38 +14,6 @@ use crate::traits::Component;
 pub struct AnalysisResult {
     pub analyser: String,
     pub value: String,
-}
-
-#[derive(Template)]
-#[template(path = "pipeline.html")]
-pub struct PipelineTemplate {
-    pub pipeline_name: String,
-    pub duration: f64,
-    pub sample_rate: f64,
-    pub total_samples: usize,
-    pub audio_base64: String,
-    pub component_htmls: Vec<String>,
-}
-
-impl PipelineTemplate {
-    pub fn new(
-        pipeline_name: String,
-        duration: f64,
-        sample_rate: f64,
-        total_samples: usize,
-        component_htmls: Vec<String>,
-        wav_data: &[u8],
-    ) -> Self {
-        let audio_base64 = general_purpose::STANDARD.encode(wav_data);
-
-        Self { pipeline_name, duration, sample_rate, total_samples, audio_base64, component_htmls }
-    }
-
-    pub fn render_to_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let html = self.render()?;
-        fs::write(path, html)?;
-        Ok(())
-    }
 }
 
 pub struct Pipeline {
@@ -95,26 +57,4 @@ impl Pipeline {
         Ok(buffer)
     }
 
-    pub fn run_with_tracking(
-        &mut self,
-        duration: f64,
-        sample_rate: f64,
-    ) -> Result<(Vec<f64>, Vec<String>)> {
-        info!("Running pipeline with tracking enabled");
-        let mut buffer = Vec::new();
-        let mut component_htmls = Vec::new();
-        let total = self.components.len();
-
-        for (i, component) in self.components.iter_mut().enumerate() {
-            let input_buffer = buffer.clone();
-
-            component.process(&mut buffer, duration, sample_rate)?;
-
-            // Let each component render its own HTML
-            let html = component.render_html(&input_buffer, &buffer, i + 1, total)?;
-            component_htmls.push(html);
-        }
-
-        Ok((buffer, component_htmls))
-    }
 }
